@@ -14,7 +14,9 @@
 *           els atoms formin molecules triatomiques amb forma
 *           de triangle equilater
 *****************************************************************************
-	program exercicishake
+c----------------------------------------------------------------------	
+      program exercici_shake
+c----------------------------------------------------------------------
 
       implicit double precision(a-h,o-z)
       double precision massa,lambda
@@ -30,12 +32,15 @@ c     1. Dimensionament de magnituds
 c     2. Lectura de dades i calcul de quantitats relacionades
 
       open(1,file='exercicishake.dades',status='old')
-         read(1,*) nconf
-         read(1,*) deltat,taut
-         read(1,*) nmolecules,tempref
-         read(1,*) sigma,epsil
-         read(1,*) massa
-         read(1,*) r0
+            read(1,*) nconf
+            read(1,*) deltat,taut
+            read(1,*) nmolecules,tempref
+            read(1,*) sigma,epsil
+            read(1,*) massa
+            read(1,*) r0
+c----------------------------------------------------------------------
+            read(1,*) tolerancia
+c----------------------------------------------------------------------
       close(1)
 
       natoms = 3
@@ -46,26 +51,27 @@ c           llibertat nmolecules*(9-3)-3
 c     3. Lectura de la configuracio anterior en A i A/ps
 
       open(2,file='conf.data',status='old')
-         do ic = 1,nmolecules
+      do ic = 1,nmolecules
             do is = 1,natoms
-               read(2,*) (r(l,is,ic),l=1,3)
-               read(2,*) (vinf(l,is,ic),l=1,3)
+                  read(2,*) (r(l,is,ic),l=1,3)
+                  read(2,*) (vinf(l,is,ic),l=1,3)
             end do
-         end do
-         read(2,*) costat
+      end do
+      read(2,*) costat
       close(2)
+
 c     4. Expressa les quantitats en unitats reduides
 
       call reduides(nmolecules,natoms,r,vinf,costat,deltat,
      &taut,tempref,epsil,sigma,massa,r0,uvel,utemps)
 
-c     5. Comen�a el bucle de la generacio de configuracions
+c     5. Comença el bucle de la generacio de configuracions
 
-c-----------------------------------------------------------------
-      OPEN(3,FILE='shake_parte1.dat',STATUS='UNKNOWN')
-20    FORMAT(1A,10X,1A,3X,1A,25X,1A,22X,1A)
-      WRITE(3,20) '#','i','t','Etot','T'
-c-----------------------------------------------------------------
+c----------------------------------------------------------------------
+      open(3,file='thermodynamics.dat',status='unknown')
+20    format(1A,7X,1A,3X,1A,21X,1A,21X,1A)
+      write(3,20) '#','STEP','TIME','ENERGY','TEMPERATURE'
+c----------------------------------------------------------------------
 
 	do i = 1,nconf
 
@@ -76,30 +82,43 @@ c-----------------------------------------------------------------
      &r,rpro)
 c
 c     IDEA: afegiu una rutina "shake" aqui...
-c-----------------------------------------------------------------
-      call shake(nmolecules,r,rpro,rnova,r0)
-c-----------------------------------------------------------------
+c----------------------------------------------------------------------
+      !call shake(nmolecules,r,rpro,rnova,r0,tolerancia)
+c----------------------------------------------------------------------
 c
+c     rpro->rnova (si es fa shake)
       call velocitat(nmolecules,natoms,r,rpro,deltat,vinf,
      &temperatura,nf,ecin)
 
-c-----------------------------------------------------------------
-     	WRITE(3,*) i,i*deltat*utemps,etot*epsil,temperatura*epsil
-c-----------------------------------------------------------------
+c----------------------------------------------------------------------
+      write(3,*) i,i*deltat*utemps,(epot+ecin)*epsil,temperatura*epsil
+c----------------------------------------------------------------------
 
       end do
+
+c----------------------------------------------------------------------
+      close(3)
+      open(4,file='g_r.dat',status='UNKNOWN')
+      call gdr(nmolecules,sigma,costat,r)
+      close(4)
+c----------------------------------------------------------------------
 
 c     5. Escriptura de la darrera configuracio en A i A/ps
 
       open(11,file='confnova.data',status='unknown')
       do ic = 1,nmolecules
-         do is = 1,natoms
-            write(11,*) (r(l,is,ic)*sigma,l=1,3)
-            write(11,*) (vinf(l,is,ic)*uvel,l=1,3)
-         end do
+            do is = 1,natoms
+                  write(11,*) (r(l,is,ic)*sigma,l=1,3)
+                  write(11,*) (vinf(l,is,ic)*uvel,l=1,3)
+            end do
       end do
       write(11,*) costat*sigma
       close(11)
+
+c----------------------------------------------------------------------
+c     guardar ultima configuracion en formato .xyz 
+
+c----------------------------------------------------------------------
 
       end
 
@@ -116,7 +135,7 @@ c              subrutina reduides
       include 'exercicishake.dim'
       dimension r(3,nmax,nmaxmol),vinf(3,nmax,nmaxmol)
 
-c              unitat de temps expressada en ps
+c     unitat de temps expressada en ps
 
       rgas = 8.314472673d0 !J/(mol*K)
       utemps = sigma*dsqrt(massa/epsil)*dsqrt(10.d0/rgas)
@@ -128,12 +147,12 @@ c              unitat de temps expressada en ps
       taut = taut/utemps
       tempref = tempref/epsil
       do ic = 1,nmolecules
-         do is = 1,natoms
-            do l = 1,3
-               r(l,is,ic) = r(l,is,ic)/sigma
-               vinf(l,is,ic) = vinf(l,is,ic)/uvel
+            do is = 1,natoms
+                  do l = 1,3
+                        r(l,is,ic) = r(l,is,ic)/sigma
+                        vinf(l,is,ic) = vinf(l,is,ic)/uvel
+                  end do
             end do
-         end do
       end do
 
       return
@@ -151,25 +170,25 @@ c              subrutina forces
       dimension r(3,nmax,nmaxmol),accel(3,nmax,nmaxmol)
 
       do ic = 1,nmolecules
-         do is = 1,natoms
-            do l = 1,3
-               accel(l,is,ic) = 0.d0 !fa 0 les acceleracions
+            do is = 1,natoms
+                  do l = 1,3
+                        accel(l,is,ic) = 0.d0 !fa 0 les acceleracions
+                  end do
             end do
-         end do
       end do
       epot = 0.d0
 
 c        interaccio entre atoms de molecules diferents
 
       do ic = 1,nmolecules-1
-         do is = 1,natoms
-            do jc = ic+1,nmolecules
-               do js = 1,natoms
-                  call lj(is,ic,js,jc,r,costat,accel,rc,pot)
-                  epot = epot + pot
-               end do
+            do is = 1,natoms
+                  do jc = ic+1,nmolecules
+                        do js = 1,natoms
+                        call lj(is,ic,js,jc,r,costat,accel,rc,pot)
+                        epot = epot + pot
+                        end do
+                  end do
             end do
-         end do
       end do
 
       return
@@ -189,22 +208,22 @@ c              subrutina Lennard-Jones
 
       rr2 = 0.d0
       do l = 1,3
-         rijl = r(l,js,jc) - r(l,is,ic)
-         rij(l) = rijl - costat*dnint(rijl/costat)
-         rr2 = rr2 + rij(l)*rij(l)
+            rijl = r(l,js,jc) - r(l,is,ic)
+            rij(l) = rijl - costat*dnint(rijl/costat)
+            rr2 = rr2 + rij(l)*rij(l)
       end do
 
       rr = dsqrt(rr2)
       if (rr.lt.rc) then
-         ynvrr2 = 1.d0/rr2
-         ynvrr6 = ynvrr2*ynvrr2*ynvrr2
-         ynvrr12 = ynvrr6*ynvrr6
-         forsadist = 24.d0*(2.d0*ynvrr12-ynvrr6)*ynvrr2
-         pot = 4.d0*(ynvrr12-ynvrr6)
-         do l = 1,3
-            accel(l,is,ic) = accel(l,is,ic) - forsadist*rij(l)
-            accel(l,js,jc) = accel(l,js,jc) + forsadist*rij(l)
-         end do
+            ynvrr2 = 1.d0/rr2
+            ynvrr6 = ynvrr2*ynvrr2*ynvrr2
+            ynvrr12 = ynvrr6*ynvrr6
+            forsadist = 24.d0*(2.d0*ynvrr12-ynvrr6)*ynvrr2
+            pot = 4.d0*(ynvrr12-ynvrr6)
+            do l = 1,3
+                  accel(l,is,ic) = accel(l,is,ic) - forsadist*rij(l)
+                  accel(l,js,jc) = accel(l,js,jc) + forsadist*rij(l)
+            end do
       end if
 
       return
@@ -229,13 +248,13 @@ c     sistema per adaptar-ho a la temperatura dessitjada
 
       ecin = 0.d0
       do ic = 1,nmolecules
-         do is = 1,natoms
-            v2 = 0.d0
-            do l = 1,3
-               v2 = v2 + vinf(l,is,ic)*vinf(l,is,ic)
+            do is = 1,natoms
+                  v2 = 0.d0
+                  do l = 1,3
+                  v2 = v2 + vinf(l,is,ic)*vinf(l,is,ic)
+                  end do
+                  ecin = ecin + 0.5d0*v2
             end do
-            ecin = ecin + 0.5d0*v2
-         end do
       end do
 
       temperatura = 2.d0*ecin/dfloat(nf)
@@ -262,13 +281,13 @@ c       la posicio provisional l'instant t + deltat.
      &r(3,nmax,nmaxmol),rpro(3,nmax,nmaxmol)
 
       do ic = 1,nmolecules
-         do is = 1,natoms
-            do l = 1,3
-               vsup = vinf(l,is,ic) + accel(l,is,ic)*deltat
-               vsup = vsup*lambda
-               rpro(l,is,ic) = r(l,is,ic) + vsup*deltat
+            do is = 1,natoms
+                  do l = 1,3
+                  vsup = vinf(l,is,ic) + accel(l,is,ic)*deltat
+                  vsup = vsup*lambda
+                  rpro(l,is,ic) = r(l,is,ic) + vsup*deltat
+                  end do
             end do
-         end do
       end do
 
       return
@@ -292,88 +311,83 @@ c       la posicio l'instant t + deltat.
 
       ecin = 0.d0
       do ic = 1,nmolecules
-         do is = 1,natoms
-            v2 = 0.d0
-            do l = 1,3
-               vsup = (rpro(l,is,ic) - r(l,is,ic))/deltat
-               v(l,is,ic) = (vinf(l,is,ic)+vsup)/2.d0 !v(t)
-               vinf(l,is,ic) = vsup
-               r(l,is,ic) = rpro(l,is,ic)
-               v2 = v2 + v(l,is,ic)*v(l,is,ic)
+            do is = 1,natoms
+                  v2 = 0.d0
+                  do l = 1,3
+                  vsup = (rpro(l,is,ic) - r(l,is,ic))/deltat
+                  v(l,is,ic) = (vinf(l,is,ic)+vsup)/2.d0 !v(t)
+                  vinf(l,is,ic) = vsup
+                  r(l,is,ic) = rpro(l,is,ic)
+                  v2 = v2 + v(l,is,ic)*v(l,is,ic)
+                  end do
+                  ecin = ecin + 0.5d0*v2
             end do
-            ecin = ecin + 0.5d0*v2
-         end do
       end do
       temperatura = 2.d0*ecin/dfloat(nf)
 
       return
       end
 
-c-----------------------------------------------------------------------
-c     SUBRUTINA SHAKE
-c-----------------------------------------------------------------------
-	subroutine shake(nmolecules,r,rpro,rnova,r0)
-      implicit double precision(a-h,o-z)
-      double precision lambda
-      integer i,j,k,i_comp
-      double precision tolerancia
-      include 'exercicishake.dim'
-      dimension r(3,nmax,nmaxmol),rpro(3,nmax,nmaxmol)
-      dimension rnova(3,nmax,nmaxmol)
-      dimension r_comp(nmax),r_ij(3),r_pij(3)
+C-----------------------------------------------------------------------
+C     SUBROUTINA gdr
+C-----------------------------------------------------------------------
       
-      do i=1,nmolecules
-            r_comp=0d0
-            comp=1d0              
-            lambda=0d0
-            do while (comp.gt.tolerancia)
-            
-      print*,'SHAKE #molecula=',i      
-      print*,'r_comp= ',r_comp,'toler= ',tolerancia
-      print*,'previ rpro=',rpro(:,1,i),'r0= ',r0
+	subroutine gdr(npart,sigma,costat,r1)!switch)
+      implicit real*8 (a-h,o-z)
+      real*8 nid
+      include 'exercicishake.dim'
+	dimension r1(3,nmax,nmaxmol),g(nhis+1)
+      !integer switch
+	
+	pi=acos(-1d0)
+	rho=npart/(costat**3)
+	
+!	if (switch.eq.0) then !INITIALIZATION
+      ngr=0
+      delg=costat/(2*nhis)
+      do i = 1,nhis
+            g(i) = 0 
+      enddo
 
-            i_comp=0
+!	else if (switch.eq.1) then !SAMPLE
+      ngr=ngr+1
+      do i=1,npart-1
+            do k=1,nmax
+            do j=i+1,npart
+            do l=1,nmax
 
-            do j=1,nmax-1
-            do k=j+1,nmax
-            i_comp=i_comp+1
-            r_esc=0d0 
-            r_p=0d0
-            do i_d=1,3         
-                  r_ij(i_d)=r(i_d,k,i)-r(i_d,j,i)
-                  r_pij(i_d)=rpro(i_d,k,i)-rpro(i_d,j,i)                 
-                  r_esc=r_esc+r_ij(i_d)*r_pij(i_d)
-                  r_p=r_p+r_pij(i_d)*r_pij(i_d)         
+                  xr=r1(1,l,i)-r1(1,l,j)
+                  yr=r1(2,l,i)-r1(2,l,j)
+                  zr=r1(3,l,i)-r1(3,l,j)
+
+                  xr=xr-costat*nint(xr/costat)
+                  yr=yr-costat*nint(yr/costat)
+                  zr=zr-costat*nint(zr/costat)
+
+                  r=sqrt(xr**2+yr**2+zr**2)
+                  if (r.lt.(costat/2d0)) then
+                        ig=int(r/delg)+1
+                        g(ig)=g(ig)+2
+                  end if
+
             end do
-            lambda=(r_p-r0**2d0)/(4d0*2d0*r_esc)         
+            end do
+            end do
+	end do
 
-      print*,'j,k= ',j,k,'lambda=',lambda
+!	else if (switch.eq.2) then !DETERMINE g(r)
+      do i=1,nhis
+            r=delg*(i+0.5d0)
+            vb=((i+1)**3d0-i**3d0)*delg**3d0
+            nid=(4d0/3d0)*pi*vb*rho
+            g(i)=g(i)/(ngr*npart*nid)
+            write(4,*)r*sigma,g(i)
+      end do
+!	end if
 
-            check=0d0
-            do i_d=1,3
-                  rpro(i_d,j,i)=rpro(i_d,j,i)+2d0*lambda*r_ij(i_d)
-                  rpro(i_d,k,i)=rpro(i_d,k,i)-2d0*lambda*r_ij(i_d)          
-                  check=check+(rpro(i_d,j,i)-rpro(i_d,k,i))**2d0
-            end do !i_d
-            r_comp(i_comp)=dabs(check-r0**2d0)          
-            end do !k
-            end do !j
-            comp=maxval(r_comp)
-
-      print*,'r_comp= ',r_comp,'toler= ',tolerancia       
-      print*,'post rpro=',rpro(:,1,i)
-      print*,'comp= ',comp
-      print*,'final'
-
-            end do !while
-            rnova(:,:,i)=rpro(:,:,i)
-      stop
-      end do !i
-
-      return
+	return
 	end
 
-c-----------------------------------------------------------------------
-c     g(r) SUBRUTINA SENSE SHAKE
-c-----------------------------------------------------------------------
-C     CALCUL DE g(r) RESPECTE EL CENTRE DE MASSES DE CADA MOLECULA
+C-----------------------------------------------------------------------
+C     SUBROUTINA SHAKE
+C-----------------------------------------------------------------------

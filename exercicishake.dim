@@ -7,4 +7,4 @@ c
 
 c   1 - Nombre maxim de d'atoms i nombre maxim d'atoms de l'especie 1
 
-      parameter(nmax=3,nmaxmol=1000)
+      parameter(nmax=3,nmaxmol=1000,nhis=1000)
