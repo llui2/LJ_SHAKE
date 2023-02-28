@@ -61,11 +61,13 @@ c     4. Expressa les quantitats en unitats reduides
 
 c     5. Comen�a el bucle de la generacio de configuracions
 
-	OPEN(3,FILE='shake_parte1.dat',STATUS='UNKNOWN')
-	WRITE(3,*)'# i,    etot,      temperatura, g_r'
+c-----------------------------------------------------------------
+      OPEN(3,FILE='shake_parte1.dat',STATUS='UNKNOWN')
+20    FORMAT(1A,10X,1A,3X,1A,25X,1A,22X,1A)
+      WRITE(3,20) '#','i','t','Etot','T'
+c-----------------------------------------------------------------
 
-
-      do i = 1,nconf
+	do i = 1,nconf
          call forces(nmolecules,natoms,r,costat,accel,rc,epot)
          call factlambda(nmolecules,natoms,vinf,nf,tempref,
      &deltat,taut,lambda)
@@ -77,8 +79,13 @@ c-----------------------------------------------------------------
 c         call shake(nmolecules,r,rpro,rnova,r0)
 c-----------------------------------------------------------------
 c
-      call velocitat(nmolecules,natoms,r,rpro,deltat,vinf,
+          call velocitat(nmolecules,natoms,r,rpro,deltat,vinf,
      &temperatura,nf,ecin)
+
+c-----------------------------------------------------------------
+     	WRITE(3,*) i,i*deltat*utemps,etot*epsil,temperatura*epsil
+c-----------------------------------------------------------------
+
       end do
 
 c     5. Escriptura de la darrera configuracio en A i A/ps
@@ -93,7 +100,6 @@ c     5. Escriptura de la darrera configuracio en A i A/ps
       write(11,*) costat*sigma
       close(11)
 
-      stop
       end
 
 *********************************************************
