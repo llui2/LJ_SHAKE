@@ -68,18 +68,19 @@ c-----------------------------------------------------------------
 c-----------------------------------------------------------------
 
 	do i = 1,nconf
-         call forces(nmolecules,natoms,r,costat,accel,rc,epot)
-         call factlambda(nmolecules,natoms,vinf,nf,tempref,
+
+      call forces(nmolecules,natoms,r,costat,accel,rc,epot)
+      call factlambda(nmolecules,natoms,vinf,nf,tempref,
      &deltat,taut,lambda)
-         call velpospro(nmolecules,natoms,vinf,accel,deltat,lambda,
+      call velpospro(nmolecules,natoms,vinf,accel,deltat,lambda,
      &r,rpro)
 c
-c         IDEA: afegiu una rutina "shake" aqui...
+c     IDEA: afegiu una rutina "shake" aqui...
 c-----------------------------------------------------------------
-c         call shake(nmolecules,r,rpro,rnova,r0)
+      call shake(nmolecules,r,rpro,rnova,r0)
 c-----------------------------------------------------------------
 c
-          call velocitat(nmolecules,natoms,r,rpro,deltat,vinf,
+      call velocitat(nmolecules,natoms,r,rpro,deltat,vinf,
      &temperatura,nf,ecin)
 
 c-----------------------------------------------------------------
@@ -307,3 +308,72 @@ c       la posicio l'instant t + deltat.
 
       return
       end
+
+c-----------------------------------------------------------------------
+c     SUBRUTINA SHAKE
+c-----------------------------------------------------------------------
+	subroutine shake(nmolecules,r,rpro,rnova,r0)
+      implicit double precision(a-h,o-z)
+      double precision lambda
+      integer i,j,k,i_comp
+      double precision tolerancia
+      include 'exercicishake.dim'
+      dimension r(3,nmax,nmaxmol),rpro(3,nmax,nmaxmol)
+      dimension rnova(3,nmax,nmaxmol)
+      dimension r_comp(nmax),r_ij(3),r_pij(3)
+      
+      do i=1,nmolecules
+            r_comp=0d0
+            comp=1d0              
+            lambda=0d0
+            do while (comp.gt.tolerancia)
+            
+      print*,'SHAKE #molecula=',i      
+      print*,'r_comp= ',r_comp,'toler= ',tolerancia
+      print*,'previ rpro=',rpro(:,1,i),'r0= ',r0
+
+            i_comp=0
+
+            do j=1,nmax-1
+            do k=j+1,nmax
+            i_comp=i_comp+1
+            r_esc=0d0 
+            r_p=0d0
+            do i_d=1,3         
+                  r_ij(i_d)=r(i_d,k,i)-r(i_d,j,i)
+                  r_pij(i_d)=rpro(i_d,k,i)-rpro(i_d,j,i)                 
+                  r_esc=r_esc+r_ij(i_d)*r_pij(i_d)
+                  r_p=r_p+r_pij(i_d)*r_pij(i_d)         
+            end do
+            lambda=(r_p-r0**2d0)/(4d0*2d0*r_esc)         
+
+      print*,'j,k= ',j,k,'lambda=',lambda
+
+            check=0d0
+            do i_d=1,3
+                  rpro(i_d,j,i)=rpro(i_d,j,i)+2d0*lambda*r_ij(i_d)
+                  rpro(i_d,k,i)=rpro(i_d,k,i)-2d0*lambda*r_ij(i_d)          
+                  check=check+(rpro(i_d,j,i)-rpro(i_d,k,i))**2d0
+            end do !i_d
+            r_comp(i_comp)=dabs(check-r0**2d0)          
+            end do !k
+            end do !j
+            comp=maxval(r_comp)
+
+      print*,'r_comp= ',r_comp,'toler= ',tolerancia       
+      print*,'post rpro=',rpro(:,1,i)
+      print*,'comp= ',comp
+      print*,'final'
+
+            end do !while
+            rnova(:,:,i)=rpro(:,:,i)
+      stop
+      end do !i
+
+      return
+	end
+
+c-----------------------------------------------------------------------
+c     g(r) SUBRUTINA SENSE SHAKE
+c-----------------------------------------------------------------------
+C     CALCUL DE g(r) RESPECTE EL CENTRE DE MASSES DE CADA MOLECULA
