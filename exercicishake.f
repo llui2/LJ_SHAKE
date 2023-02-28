@@ -1,18 +1,18 @@
 *****************************************************************************
 *     Programa de Dinamica Molecular per colectivitat NVT (algoritme
-*     de Berendsen) per un sistema de N molecules triatomiques dins una 
-*     capsa cubica. Els atoms son de Ar (per exemple) i interactuen 
-*     de la seguent forma: 
+*     de Berendsen) per un sistema de N molecules triatomiques dins una
+*     capsa cubica. Els atoms son de Ar (per exemple) i interactuen
+*     de la seguent forma:
 *
-*          1) Els atoms d'una mateixa molecula no interactuen 
-*             ja que fan SHAKE i formen un triangle equilater. 
-*          2) Si pertanyen a molecules diferents interactuen amb un 
+*          1) Els atoms d'una mateixa molecula no interactuen
+*             ja que fan SHAKE i formen un triangle equilater.
+*          2) Si pertanyen a molecules diferents interactuen amb un
 *             potencial de Lennard-Jones truncat a 2.5 sigmes
 *
 *           Exercici SHAKE, en que els alumnes han de fer una
-*           subrutina que implementi la funcio SHAKE a fi de que 
-*           els atoms formin molecules triatomiques amb forma 
-*           de triangle equilater 
+*           subrutina que implementi la funcio SHAKE a fi de que
+*           els atoms formin molecules triatomiques amb forma
+*           de triangle equilater
 *****************************************************************************
 	program exercicishake
 
@@ -31,7 +31,7 @@ c     2. Lectura de dades i calcul de quantitats relacionades
 
       open(1,file='exercicishake.dades',status='old')
          read(1,*) nconf
-         read(1,*) deltat,taut 
+         read(1,*) deltat,taut
          read(1,*) nmolecules,tempref
          read(1,*) sigma,epsil
          read(1,*) massa
@@ -39,8 +39,8 @@ c     2. Lectura de dades i calcul de quantitats relacionades
       close(1)
 
       natoms = 3
-      nf = 6*nmolecules-3 !nombre de graus de 
-c           llibertat nmolecules*(9-3)-3 
+      nf = 6*nmolecules-3 !nombre de graus de
+c           llibertat nmolecules*(9-3)-3
       rc = 2.5d0 !abast del potencial en unitats reduides
 
 c     3. Lectura de la configuracio anterior en A i A/ps
@@ -50,8 +50,8 @@ c     3. Lectura de la configuracio anterior en A i A/ps
             do is = 1,natoms
                read(2,*) (r(l,is,ic),l=1,3)
                read(2,*) (vinf(l,is,ic),l=1,3)
-            end do         
-         end do         
+            end do
+         end do
          read(2,*) costat
       close(2)
 c     4. Expressa les quantitats en unitats reduides
@@ -59,10 +59,11 @@ c     4. Expressa les quantitats en unitats reduides
       call reduides(nmolecules,natoms,r,vinf,costat,deltat,
      &taut,tempref,epsil,sigma,massa,r0,uvel,utemps)
 
-c     5. Comen�a el bucle de la generacio de configuracions 
+c     5. Comen�a el bucle de la generacio de configuracions
 
-	OPEN(3,FILE='shake_e_t.dat',STATUS='UNKNOWN')
-	WRITE(3,*)'# i,    etot,      temperatura'
+	OPEN(3,FILE='shake_parte1.dat',STATUS='UNKNOWN')
+	WRITE(3,*)'# i,    etot,      temperatura, g_r'
+
 
       do i = 1,nconf
          call forces(nmolecules,natoms,r,costat,accel,rc,epot)
@@ -80,15 +81,15 @@ c
      &temperatura,nf,ecin)
       end do
 
-c     5. Escriptura de la darrera configuracio en A i A/ps 
+c     5. Escriptura de la darrera configuracio en A i A/ps
 
       open(11,file='confnova.data',status='unknown')
       do ic = 1,nmolecules
          do is = 1,natoms
             write(11,*) (r(l,is,ic)*sigma,l=1,3)
             write(11,*) (vinf(l,is,ic)*uvel,l=1,3)
-         end do         
-      end do         
+         end do
+      end do
       write(11,*) costat*sigma
       close(11)
 
@@ -108,9 +109,9 @@ c              subrutina reduides
       include 'exercicishake.dim'
       dimension r(3,nmax,nmaxmol),vinf(3,nmax,nmaxmol)
 
-c              unitat de temps expressada en ps 
+c              unitat de temps expressada en ps
 
-      rgas = 8.314472673d0 !J/(mol*K) 
+      rgas = 8.314472673d0 !J/(mol*K)
       utemps = sigma*dsqrt(massa/epsil)*dsqrt(10.d0/rgas)
       uvel = sigma/utemps !unitat de velocitat expressada en A/ps
 
@@ -123,7 +124,7 @@ c              unitat de temps expressada en ps
          do is = 1,natoms
             do l = 1,3
                r(l,is,ic) = r(l,is,ic)/sigma
-               vinf(l,is,ic) = vinf(l,is,ic)/uvel 
+               vinf(l,is,ic) = vinf(l,is,ic)/uvel
             end do
          end do
       end do
@@ -146,10 +147,10 @@ c              subrutina forces
          do is = 1,natoms
             do l = 1,3
                accel(l,is,ic) = 0.d0 !fa 0 les acceleracions
-            end do 
-         end do 
-      end do 
-      epot = 0.d0 
+            end do
+         end do
+      end do
+      epot = 0.d0
 
 c        interaccio entre atoms de molecules diferents
 
@@ -192,7 +193,7 @@ c              subrutina Lennard-Jones
          ynvrr6 = ynvrr2*ynvrr2*ynvrr2
          ynvrr12 = ynvrr6*ynvrr6
          forsadist = 24.d0*(2.d0*ynvrr12-ynvrr6)*ynvrr2
-         pot = 4.d0*(ynvrr12-ynvrr6)  
+         pot = 4.d0*(ynvrr12-ynvrr6)
          do l = 1,3
             accel(l,is,ic) = accel(l,is,ic) - forsadist*rij(l)
             accel(l,js,jc) = accel(l,js,jc) + forsadist*rij(l)
@@ -230,7 +231,7 @@ c     sistema per adaptar-ho a la temperatura dessitjada
          end do
       end do
 
-      temperatura = 2.d0*ecin/dfloat(nf) 
+      temperatura = 2.d0*ecin/dfloat(nf)
       lambda = dsqrt(1.d0+deltat/taut*(tempref/temperatura-1.d0))
 
       return
