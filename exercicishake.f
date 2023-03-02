@@ -14,7 +14,7 @@
 *           els atoms formin molecules triatomiques amb forma
 *           de triangle equilater
 *****************************************************************************
-c----------------------------------------------------------------------	
+c----------------------------------------------------------------------
       program exercici_shake
 c----------------------------------------------------------------------
 
@@ -116,7 +116,16 @@ c     5. Escriptura de la darrera configuracio en A i A/ps
       close(11)
 
 c----------------------------------------------------------------------
-c     guardar ultima configuracion en formato .xyz 
+c     guardar ultima configuracion en formato .xyz
+      open(12,file='confnova.xyz',status='unknown')
+      write(12,*) nmolecules*natoms
+      write(12,*)
+      do ic = 1,nmolecules
+            do is = 1,natoms
+                  write(12,*) "S",(r(l,is,ic)*sigma,l=1,3)
+            end do
+      end do
+      close(12)
 
 c----------------------------------------------------------------------
 
@@ -331,22 +340,22 @@ c       la posicio l'instant t + deltat.
 C-----------------------------------------------------------------------
 C     SUBROUTINA gdr
 C-----------------------------------------------------------------------
-      
+
 	subroutine gdr(npart,sigma,costat,r1)!switch)
       implicit real*8 (a-h,o-z)
       real*8 nid
       include 'exercicishake.dim'
 	dimension r1(3,nmax,nmaxmol),g(nhis+1)
       !integer switch
-	
+
 	pi=acos(-1d0)
 	rho=npart/(costat**3)
-	
+
 !	if (switch.eq.0) then !INITIALIZATION
       ngr=0
       delg=costat/(2*nhis)
       do i = 1,nhis
-            g(i) = 0 
+            g(i) = 0
       enddo
 
 !	else if (switch.eq.1) then !SAMPLE
