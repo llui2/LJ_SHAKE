@@ -73,7 +73,7 @@ c----------------------------------------------------------------------
       write(3,20) '#','STEP','TIME','ENERGY','TEMPERATURE'
 c----------------------------------------------------------------------
 
-	do i = 1,nconf
+      do i = 1,nconf
 
       call forces(nmolecules,natoms,r,costat,accel,rc,epot)
       call factlambda(nmolecules,natoms,vinf,nf,tempref,
@@ -86,21 +86,24 @@ c----------------------------------------------------------------------
       !call shake(nmolecules,r,rpro,rnova,r0,tolerancia)
 c----------------------------------------------------------------------
 c
-c     rpro->rnova (si es fa shake)
+c
       call velocitat(nmolecules,natoms,r,rpro,deltat,vinf,
      &temperatura,nf,ecin)
 
 c----------------------------------------------------------------------
       write(3,*) i,i*deltat*utemps,(epot+ecin)*epsil,temperatura*epsil
+
+      if (i.eq.nconf) then 
+            open(4,file='gdr.dat',status='unknown')
+            call gdr(nmolecules,sigma,costat,rpro)
+            close(4)
+      end if
 c----------------------------------------------------------------------
 
       end do
 
 c----------------------------------------------------------------------
       close(3)
-      open(4,file='g_r.dat',status='UNKNOWN')
-      call gdr(nmolecules,sigma,costat,r)
-      close(4)
 c----------------------------------------------------------------------
 
 c     5. Escriptura de la darrera configuracio en A i A/ps
@@ -121,12 +124,13 @@ c     guardar ultima configuracion en formato .xyz
       write(12,*) nmolecules*natoms
       write(12,*)
       do ic = 1,nmolecules
-            do is = 1,natoms
-                  write(12,*) "S",(r(l,is,ic)*sigma,l=1,3)
-            end do
+            !do is = 1,natoms
+                  write(12,*) "O",(r(l,1,ic)*sigma,l=1,3)
+                  write(12,*) "H",(r(l,2,ic)*sigma,l=1,3)
+                  write(12,*) "H",(r(l,3,ic)*sigma,l=1,3)
+            !end do
       end do
       close(12)
-
 c----------------------------------------------------------------------
 
       end
@@ -341,62 +345,119 @@ C-----------------------------------------------------------------------
 C     SUBROUTINA gdr
 C-----------------------------------------------------------------------
 
-	subroutine gdr(npart,sigma,costat,r1)!switch)
+      subroutine gdr(npart,sigma,box,r1)!switch)
       implicit real*8 (a-h,o-z)
       real*8 nid
       include 'exercicishake.dim'
-	dimension r1(3,nmax,nmaxmol),g(nhis+1)
+      dimension r1(3,nmax,nmaxmol),g(1000)
       !integer switch
 
-	pi=acos(-1d0)
-	rho=npart/(costat**3)
+      pi=acos(-1d0)
+      rho=npart/(box**3)
 
 !	if (switch.eq.0) then !INITIALIZATION
-      ngr=0
-      delg=costat/(2*nhis)
+      ngr=1
+      delg=box/(2*nhis)
       do i = 1,nhis
             g(i) = 0
-      enddo
+      end do
 
 !	else if (switch.eq.1) then !SAMPLE
-      ngr=ngr+1
       do i=1,npart-1
-            do k=1,nmax
-            do j=i+1,npart
-            do l=1,nmax
+      do k=1,nmax-1
+            !do j=i,npart !SHAKE
+            do j=i+1,npart ! NO SHAKE
+            do l=k+1,nmax
 
-                  xr=r1(1,l,i)-r1(1,l,j)
-                  yr=r1(2,l,i)-r1(2,l,j)
-                  zr=r1(3,l,i)-r1(3,l,j)
+                  xr=r1(1,k,i)-r1(1,l,j)
+                  yr=r1(2,k,i)-r1(2,l,j)
+                  zr=r1(3,k,i)-r1(3,l,j)
 
-                  xr=xr-costat*nint(xr/costat)
-                  yr=yr-costat*nint(yr/costat)
-                  zr=zr-costat*nint(zr/costat)
+                  xr=xr-box*nint(xr/box)
+                  yr=yr-box*nint(yr/box)
+                  zr=zr-box*nint(zr/box)
 
                   r=sqrt(xr**2+yr**2+zr**2)
-                  if (r.lt.(costat/2d0)) then
-                        ig=int(r/delg)+1
+                  if (r.lt.(box/2)) then
+                        ig=int(r/delg)
                         g(ig)=g(ig)+2
                   end if
 
             end do
             end do
-            end do
-	end do
+      end do
+      end do
 
 !	else if (switch.eq.2) then !DETERMINE g(r)
       do i=1,nhis
             r=delg*(i+0.5d0)
-            vb=((i+1)**3d0-i**3d0)*delg**3d0
-            nid=(4d0/3d0)*pi*vb*rho
-            g(i)=g(i)/(ngr*npart*nid)
+            vb=((i+1)**3-i**3)*delg**3
+            nid=(4d0/3)*pi*vb*rho
+            g(i)=g(i)/(ngr*npart*nmax*nid)
             write(4,*)r*sigma,g(i)
       end do
 !	end if
 
-	return
-	end
+      return
+      end
 
 C-----------------------------------------------------------------------
 C     SUBROUTINA SHAKE
 C-----------------------------------------------------------------------
+      subroutine shake(nmolecules,r,rpro,rnova,r0,tolerancia)
+      implicit double precision(a-h,o-z)
+      double precision lambda
+      integer i,j,k,i_e,dim
+      include 'exercicishake.dim'
+      dimension r(3,nmax,nmaxmol),rpro(3,nmax,nmaxmol)
+      dimension rnova(3,nmax,nmaxmol)
+      dimension e_ij(nmax),r_ij(3),r_pij(3)
+
+      !e_ij = |r_ij^2 - r0^2|
+      
+      do i = 1,nmolecules !for all molecules
+
+            e_ij = 0d0 !array of the errors within the molecule
+            e_max = 1d0 !maximum error
+            lambda = 0d0
+
+            do while (e_max.gt.tolerancia) !while the maximum error is greater than the tolerance
+
+                  i_e = 0 
+
+                  do j = 1,nmax-1 !for all atoms of the molecule
+                  do k = j+1,nmax
+                  
+                  i_e = i_e+1
+                  prod_esc = 0d0 !scalar product of r_ij and r_pij
+                  r_p2 = 0d0 !|r_p|^2
+
+                  do dim = 1,3
+                        r_ij(dim) = r(dim,k,i) - r(dim,j,i)
+                        r_pij(dim) = rpro(dim,k,i) - rpro(dim,j,i)
+                        prod_esc = prod_esc + r_pij(dim)*r_ij(dim)
+                        r_p2 = r_p2 + r_pij(dim)*r_pij(dim)
+                  end do
+                  lambda = (r_p2-r0**2)/(4d0*(2d0)*prod_esc)
+                  
+                  dij = 0d0 !|r_ij|^2
+                  do dim = 1,3
+                  rpro(dim,j,i) = rpro(dim,j,i)+2*lambda*r_ij(dim)
+                  rpro(dim,k,i) = rpro(dim,k,i)-2*lambda*r_ij(dim)
+                  
+                  dij = dij + (rpro(dim,j,i)-rpro(dim,k,i))**2
+                  end do
+
+                  e_ij(i_e) = abs(dij-r0**2d0)          
+                  end do 
+                  end do
+                  e_max = maxval(e_ij)
+
+            end do !while
+
+            rnova(:,:,i)=rpro(:,:,i)
+
+      end do !i
+
+	return
+	end
