@@ -83,7 +83,7 @@ c----------------------------------------------------------------------
 c
 c     IDEA: afegiu una rutina "shake" aqui...
 c----------------------------------------------------------------------
-      !call shake(nmolecules,r,rpro,rnova,r0,tolerancia)
+      call shake(nmolecules,r,rpro,rnova,r0,tolerancia)
 c----------------------------------------------------------------------
 c
 c
@@ -97,6 +97,9 @@ c----------------------------------------------------------------------
             open(4,file='gdr.dat',status='unknown')
             call gdr(nmolecules,sigma,costat,rpro)
             close(4)
+            open(5,file='fluctuations.dat',status='unknown')
+            call fluctuations(nmolecules,sigma,rpro)
+            close(5)
       end if
 c----------------------------------------------------------------------
 
@@ -365,8 +368,8 @@ C-----------------------------------------------------------------------
 !	else if (switch.eq.1) then !SAMPLE
       do i=1,npart-1
       do k=1,nmax-1
-            !do j=i,npart !SHAKE
-            do j=i+1,npart ! NO SHAKE
+            do j=i,npart !SHAKE
+            !do j=i+1,npart ! NO SHAKE
             do l=k+1,nmax
 
                   xr=r1(1,k,i)-r1(1,l,j)
@@ -448,7 +451,7 @@ C-----------------------------------------------------------------------
                   dij = dij + (rpro(dim,j,i)-rpro(dim,k,i))**2
                   end do
 
-                  e_ij(i_e) = abs(dij-r0**2d0)          
+                  e_ij(i_e) = abs(dij-r0**2)          
                   end do 
                   end do
                   e_max = maxval(e_ij)
@@ -457,6 +460,31 @@ C-----------------------------------------------------------------------
 
             rnova(:,:,i)=rpro(:,:,i)
 
+      end do !i
+
+	return
+	end
+
+C-----------------------------------------------------------------------
+C     SUBROUTINA FLUCTUATIONS
+C-----------------------------------------------------------------------
+      subroutine fluctuations(nmolecules,sigma,r1)
+      implicit real*8 (a-h,o-z)
+      include 'exercicishake.dim'
+	dimension r1(3,nmax,nmaxmol)
+
+      do i=1,nmolecules
+            r=0d0
+            do j=1,nmax-1
+            do k=j+1,nmax
+                  xr=r1(1,j,i)-r1(1,k,i)
+                  yr=r1(2,j,i)-r1(2,k,i)
+                  zr=r1(3,j,i)-r1(3,k,i)
+
+                  r=r+dsqrt(xr**2+yr**2+zr**2)/3d0
+            end do !k
+            end do !j
+            write(5,*) i, r*sigma
       end do !i
 
 	return
